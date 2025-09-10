@@ -52,8 +52,8 @@ function getLocalIp() {
 const LOCAL_IP = getLocalIp();
 const VOTING_URL = `http://${LOCAL_IP}:${PORT}`;
 
-console.log(`📍 Локальный адрес: http://localhost:${PORT}`);
-console.log(`📍 Сетевой доступ: ${VOTING_URL}`);
+console.log(`📍 Локальный адрес процесса:\thttp://localhost:${PORT}`);
+console.log(`📍 Внешний адрес процесса:\t${VOTING_URL}`);
 // паролей в логи не печатаем
 
 // === Static & JSON ===
@@ -76,17 +76,37 @@ app.use((error, req, res, next) => {
 });
 
 function getPublicBaseUrl(req) {
-  // Cloudflare может присылать cf-visitor: {"scheme":"https"}
-  // но достаточно X-Forwarded-Proto/Host
+  // 1) Cloudflare присылает cf-visitor: {"scheme":"https"} — это самый надёжный признак
+  const cfVisitor = req.headers['cf-visitor'];
+  if (cfVisitor && typeof cfVisitor === 'string') {
+    try {
+      const obj = JSON.parse(cfVisitor);
+      if (obj && obj.scheme) {
+        const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString().split(',')[0].trim();
+        if (host) return `${obj.scheme}://${host}`;
+      }
+    } catch (_) { }
+  }
+
+  // 2) Если cf-visitor нет, но Cloudflare всё же проксирует — бывают доп. подсказки:
+  //    - x-forwarded-proto
+  //    - x-forwarded-port
+  //    - cf-ssl: on (редко)
   const xfProto = (req.headers['x-forwarded-proto'] || '').toString().split(',')[0].trim();
-  const proto = xfProto || req.protocol || 'https';
+  const xfPort = (req.headers['x-forwarded-port'] || '').toString().split(',')[0].trim();
+
+  let proto =
+    xfProto ||
+    (xfPort === '443' ? 'https' : '') ||
+    (req.protocol || '');
+
+  if (!proto) proto = 'http';
 
   const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString().split(',')[0].trim();
-  if (!host) {
-    // fallback на локалку (на всякий случай)
-    return `http://localhost:${process.env.PORT || 3000}`;
-  }
-  return `${proto}://${host}`;
+  if (host) return `${proto}://${host}`;
+
+  // 3) Фолбэк (локалка/прямой доступ)
+  return `http://localhost:${process.env.PORT || 3000}`;
 }
 
 
@@ -257,6 +277,6 @@ io.on('connection', (socket) => {
 
 // start
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Сервер запущен на порту ${PORT}`);
-  console.log('📱 Для подключения с телефона используйте сетевой адрес');
+  console.log(`✅ Процесс запущен на порту ${PORT}`);
+  console.log('📱 Для подключения с телефона используйте доменное имя');
 });
