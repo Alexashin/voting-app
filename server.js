@@ -79,7 +79,7 @@ function getPublicBaseUrl(req) {
   // Cloudflare может присылать cf-visitor: {"scheme":"https"}
   // но достаточно X-Forwarded-Proto/Host
   const xfProto = (req.headers['x-forwarded-proto'] || '').toString().split(',')[0].trim();
-  const proto = xfProto || req.protocol || 'http';
+  const proto = xfProto || req.protocol || 'https';
 
   const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString().split(',')[0].trim();
   if (!host) {
