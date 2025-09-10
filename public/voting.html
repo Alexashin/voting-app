@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система голосования</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
+    <link rel="icon" href="/favicon.png">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <button class="profile-btn" id="profileBtn">🙎‍♂️</button>
+            <h1>Система голосования</h1>
+            <div class="admin-access">
+                <button id="adminLoginBtn">Вход для администратора</button>
+            </div>
+        </header>
+
+        <div class="profile-menu" id="profileMenu">
+            <div class="profile-menu-item" id="editProfileBtn">✏️ Редактировать профиль</div>
+            <div class="profile-menu-item" id="logoutBtn">🚪 Выйти</div>
+        </div>
+
+        <div id="voteTab">
+            <div class="login-form" id="loginForm">
+                <h3>Вход в систему</h3>
+                <input type="text" id="loginName" placeholder="Имя" required>
+                <input type="text" id="loginSurname" placeholder="Фамилия" required>
+                <button id="loginBtn">Войти</button>
+                <div class="login-links">
+                    <a id="createAccountBtn">Создать аккаунт</a>
+                </div>
+            </div>
+
+            <div class="user-info hidden" id="userInfo">
+                <h3>Создание профиля</h3>
+                <input type="text" id="userName" placeholder="Имя" required>
+                <input type="text" id="userSurname" placeholder="Фамилия" required>
+                <input type="number" id="userAge" placeholder="Возраст">
+                <input type="text" id="userSchool" placeholder="Школа/Класс">
+                <input type="date" id="userBirthday">
+                <textarea id="userBio" placeholder="Краткая информация о себе"></textarea>
+                <button id="saveUserInfo">Сохранить профиль</button>
+            </div>
+
+            <div class="options-grid hidden" id="optionsContainer">
+                <!-- Варианты будут добавлены через JavaScript -->
+            </div>
+
+            <div id="voteMessage" class="vote-message hidden"></div>
+        </div>
+
+        <div id="adminTab" class="hidden">
+            <button class="back-button" id="backToVote">← Вернуться к голосованию</button>
+
+            <div class="admin-panel">
+                <h2>Панель администратора</h2>
+
+                <div class="admin-section">
+                    <h3>Ссылка для голосования</h3>
+                    <div class="link-container">
+                        <div id="adminLink"></div>
+                        <button class="copy-btn" id="copyLinkBtn">Копировать</button>
+                    </div>
+                    <div class="qr-container">
+                        <canvas id="qrCode"></canvas>
+                        <p>Отсканируйте QR-код для голосования</p>
+                    </div>
+                </div>
+
+                <div class="admin-section">
+                    <h3>Результаты в реальном времени</h3>
+                    <div class="results" id="resultsContainer">
+                        <!-- Результаты будут добавлены через JavaScript -->
+                    </div>
+                </div>
+
+                <div class="admin-section">
+                    <h3>Участники</h3>
+                    <button id="showUsersBtn" class="action-btn secondary-btn">Показать список участников</button>
+                    <div class="users-list hidden" id="usersList">
+                        <!-- Список пользователей будет добавлен через JavaScript -->
+                    </div>
+                </div>
+
+                <div class="admin-section">
+                    <h3>Управление голосованием</h3>
+                    <div class="edit-panel">
+                        <div class="edit-options" id="editOptionsContainer">
+                            <!-- Редактируемые варианты будут добавлены через JavaScript -->
+                        </div>
+
+                        <div class="action-buttons">
+                            <button id="newVotingBtn" class="action-btn primary-btn">Новое голосование</button>
+                            <button id="saveChangesBtn" class="action-btn secondary-btn">Сохранить изменения</button>
+                            <button id="historyBtn" class="action-btn secondary-btn">История голосований</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальные окна -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Вход для администратора</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <input type="password" id="passwordInput" placeholder="Пароль">
+            <div id="passwordError" class="error-message">Неверный пароль</div>
+            <div class="modal-buttons">
+                <button id="submitPassword">Войти</button>
+                <button id="cancelPassword" class="secondary">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editCardModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Редактирование карточки</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <input type="text" id="editCardTitle" placeholder="Заголовок карточки">
+            <input type="text" id="editCardImage" placeholder="Ссылка на изображение" class="image-input">
+
+            <!-- Добавьте этот блок для загрузки изображений -->
+            <div class="file-upload">
+                <button id="uploadImageBtn" class="file-upload-btn">📁 Загрузить изображение</button>
+                <input type="file" id="imageUpload" class="file-input" accept="image/*">
+            </div>
+
+            <div class="image-preview">
+                <img id="imagePreview" src="" alt="Предпросмотр"
+                    style="max-width: 100%; max-height: 200px; display: none;">
+            </div>
+
+            <div class="modal-buttons">
+                <button id="saveCardEdit">Сохранить</button>
+                <button id="cancelCardEdit" class="secondary">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>История голосований</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="history-list" id="historyList">
+                <!-- История будет добавлена через JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/script.js"></script>
+</body>
+
+</html>
