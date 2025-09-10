@@ -231,6 +231,7 @@ io.on('connection', (socket) => {
   // history & users dump
   socket.on('getHistory', () => socket.emit('historyData', votingData.history));
   socket.on('getUsers', () => socket.emit('usersData', votingData.users));
+  
 
   socket.on('disconnect', () => {
     adminSockets.delete(socket.id);

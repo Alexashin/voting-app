@@ -1,6 +1,5 @@
 // Подключение к серверу
 const socket = io();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "071117";
 let isAdmin = false;
 let votingOptions = [];
 let votes = {};
@@ -133,6 +132,25 @@ function setupEventListeners() {
         renderUsersList(users);
     });
 
+    // Результат входа администратора
+    socket.on('adminLoginResult', (res) => {
+        if (res.ok) {
+            isAdmin = true;
+            hidePasswordModal();
+            showAdminPanel();
+            socket.emit('getUsers');
+        } else {
+            const el = document.getElementById('passwordError');
+            if (el) {
+                el.style.display = 'block';
+                setTimeout(() => { el.style.display = 'none'; }, 3000);
+            } else {
+                showMessage('Неверный пароль');
+            }
+        }
+    });
+
+
     socket.on('userSaved', (data) => {
         currentUserId = data.userId;
         currentUser = data.user;
@@ -188,11 +206,8 @@ function checkAdminMode() {
     const urlParams = new URLSearchParams(window.location.search);
     const password = urlParams.get('password');
 
-    if (password === ADMIN_PASSWORD) {
-        isAdmin = true;
-        socket.emit('adminLogin', password); // сообщаем серверу
-        showAdminPanel();
-        socket.emit('getUsers');
+    if (password) {
+        socket.emit('adminLogin', password);
     }
 }
 
@@ -405,20 +420,7 @@ function hidePasswordModal() {
 // Проверка пароля администратора
 function checkAdminPassword() {
     const password = document.getElementById('passwordInput').value;
-
-    if (password === ADMIN_PASSWORD) {
-        isAdmin = true;
-        // Сообщаем серверу: этот сокет — админ
-        socket.emit('adminLogin', password);
-        hidePasswordModal();
-        showAdminPanel();
-        socket.emit('getUsers');
-    } else {
-        document.getElementById('passwordError').style.display = 'block';
-        setTimeout(() => {
-            document.getElementById('passwordError').style.display = 'none';
-        }, 3000);
-    }
+    socket.emit('adminLogin', password);
 }
 
 // Показать админ-панель
