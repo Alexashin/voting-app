@@ -8,6 +8,7 @@ const multer = require('multer');
 const { networkInterfaces } = require('os');
 
 const app = express();
+app.set('trust proxy', true);
 const server = http.createServer(app);
 const io = socketIo(server);
 const adminSockets = new Set();
@@ -74,6 +75,21 @@ app.use((error, req, res, next) => {
   res.status(500).json({ error: error.message });
 });
 
+function getPublicBaseUrl(req) {
+  // Cloudflare может присылать cf-visitor: {"scheme":"https"}
+  // но достаточно X-Forwarded-Proto/Host
+  const xfProto = (req.headers['x-forwarded-proto'] || '').toString().split(',')[0].trim();
+  const proto = xfProto || req.protocol || 'http';
+
+  const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString().split(',')[0].trim();
+  if (!host) {
+    // fallback на локалку (на всякий случай)
+    return `http://localhost:${process.env.PORT || 3000}`;
+  }
+  return `${proto}://${host}`;
+}
+
+
 // === In-memory store ===
 let votingData = {
   options: [
@@ -126,12 +142,12 @@ io.on('connection', (socket) => {
       socket.emit('adminLoginResult', { ok: false, error: 'Неверный пароль' });
     }
   });
-
+  const publicUrl = getPublicBaseUrl(socket.request);
   // init payload
   socket.emit('init', {
     options: votingData.options,
     results: calculateResults(),
-    votingUrl: VOTING_URL,
+    votingUrl: publicUrl,
     bootId: BOOT_ID
   });
 
@@ -231,7 +247,7 @@ io.on('connection', (socket) => {
   // history & users dump
   socket.on('getHistory', () => socket.emit('historyData', votingData.history));
   socket.on('getUsers', () => socket.emit('usersData', votingData.users));
-  
+
 
   socket.on('disconnect', () => {
     adminSockets.delete(socket.id);
