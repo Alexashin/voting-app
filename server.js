@@ -76,37 +76,17 @@ app.use((error, req, res, next) => {
 });
 
 function getPublicBaseUrl(req) {
-  // 1) Cloudflare присылает cf-visitor: {"scheme":"https"} — это самый надёжный признак
-  const cfVisitor = req.headers['cf-visitor'];
-  if (cfVisitor && typeof cfVisitor === 'string') {
-    try {
-      const obj = JSON.parse(cfVisitor);
-      if (obj && obj.scheme) {
-        const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString().split(',')[0].trim();
-        if (host) return `${obj.scheme}://${host}`;
-      }
-    } catch (_) { }
-  }
-
-  // 2) Если cf-visitor нет, но Cloudflare всё же проксирует — бывают доп. подсказки:
-  //    - x-forwarded-proto
-  //    - x-forwarded-port
-  //    - cf-ssl: on (редко)
+  // Cloudflare может присылать cf-visitor: {"scheme":"https"}
+  // но достаточно X-Forwarded-Proto/Host
   const xfProto = (req.headers['x-forwarded-proto'] || '').toString().split(',')[0].trim();
-  const xfPort = (req.headers['x-forwarded-port'] || '').toString().split(',')[0].trim();
-
-  let proto =
-    xfProto ||
-    (xfPort === '443' ? 'https' : '') ||
-    (req.protocol || '');
-
-  if (!proto) proto = 'http';
+  const proto = xfProto || req.protocol || 'http';
 
   const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString().split(',')[0].trim();
-  if (host) return `${proto}://${host}`;
-
-  // 3) Фолбэк (локалка/прямой доступ)
-  return `http://localhost:${process.env.PORT || 3000}`;
+  if (!host) {
+    // fallback на локалку (на всякий случай)
+    return `http://localhost:${process.env.PORT || 3000}`;
+  }
+  return `${proto}://${host}`;
 }
 
 
