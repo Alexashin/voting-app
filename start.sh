@@ -7,4 +7,4 @@ export ADMIN_PASSWORD="1332"
 export NODE_ENV=production
 
 # запуск сервера
-nmp run start
+node server.js
